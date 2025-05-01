@@ -10,7 +10,7 @@
 
 ## Project Objectives
 
-Cancer has captured an increased presence in everyday conversations and its recent statistics are simply shocking. According to the Cancer Statistics, it was projected that about 2 million new cancer cases with 611,000 cancer deaths would occur in the United States in 2024 (Siegel et al., 2024). In order to understand how cancer’s impact is varied across the US, we identified the states in which new cancer cases occur most frequently and how often these cases result in death.Thus, we wanted to understand **how do factors like cancer type and sex affect cancer incidence and mortality in US states with extreme rates?**
+Cancer has captured an increased presence in everyday conversations and its recent statistics are simply shocking. According to the Cancer Statistics, it was projected that about 2 million new cancer cases with 611,000 cancer deaths would occur in the United States in 2024 (Siegel et al., 2024). In order to understand how cancer’s impact is varied across the US, we identified the states in which new cancer cases occur most frequently and how often these cases result in death. We wanted our exploratory analysis to prompt further questions that the increase the resolution of the analysis like: **how do factors like cancer type and sex affect cancer incidence and mortality in US states with extreme rates?**
 
 ## Methods
 
@@ -30,7 +30,7 @@ Cancer has captured an increased presence in everyday conversations and its rece
 
 ### Research Questions
 
-- How do cancer incidence rates vary across different states and demographic groups (e.g., gender, ethnicity)?  
+- How do cancer incidence rates vary across different states?  
 - Are there observable trends in cancer incidence and mortality over time in the U.S.?
 
 ### Techniques and Visualizations
