@@ -58,17 +58,28 @@ Our exploratory analysis revealed that Utah consistently shows the lowest cancer
 
 ## Directory Structure
 
-.
 ├── Data/
+
 │   ├── CancerIncidencebySexfromtheU.S.CancerStatisticsDataset.csv
+
 │   ├── CancerMortalitybySexfromtheU.S.CancerStatisticsDataset.csv
+
 │   ├── masterpopulationbystatesbysex.csv
+
 │   ├── sc-est2019-agesex-civ.csv
+
 │   └── sc-est2023-agesex-civ.csv
+
 └── Report_and_Environment/
-    ├── renv/
-    ├── EDAProject.Rproj
-    ├── EDAProjectonCancer.Rmd
-    ├── EDAProjectonCancer.html
-    └── renv.lock
+
+     ├── renv/
+
+     ├── EDAProject.Rproj
+
+     ├── EDAProjectonCancer.Rmd
+
+     ├── EDAProjectonCancer.html
+
+     └── renv.lock
+
 
