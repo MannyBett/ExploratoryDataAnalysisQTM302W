@@ -49,11 +49,10 @@ Our exploratory analysis revealed that Utah consistently shows the lowest cancer
 
 ## Instructions
 
-1. Open file in RStudio  
-2. Clone repository from GitHub  
-3. Make sure all necessary packages are installed \- tidyverse and dplyr  
-4. Set up R environment via 'renv' folder (should be prompted upon cloning and opening repository in R studio)  
-5. Run the .Rmd file
+1. Clone repository from GitHub
+2. Open the .Rmd file in RStudio   
+3. Set up R environment via 'renv' folder by running renv::restore  
+4. Run the .Rmd file
 
 ## Directory Structure
 
