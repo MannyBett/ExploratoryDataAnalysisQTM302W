@@ -14,12 +14,11 @@ Cancer has captured an increased presence in everyday conversations and its rece
 
 ## Methods
 
-- Data Collection  
-- Data Exploration  
-- Data Manipulation  
-- Data Merging  
-- Variable Creation  
-- Data Visualization
+- Sourcing Data from Emory's Library Databases  
+- Distinguishing Variables and Their Types Within the Data  
+- Restructuring the Data to Broaden the Scope of the Exploratory Analysis  
+- Data Summary Tables  
+- Data Visualizations Exploring Cancer Incidence and Mortality Rates  
 
 ## Languages/Platforms
 
