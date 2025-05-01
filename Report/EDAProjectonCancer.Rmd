@@ -1,0 +1,562 @@
+---
+title: "Cancer: The Timeless and Deadly Disease"
+author: "Manny Bettencourt, Aryan Patel, Aarush Bedi"
+date: "2025-02-25"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Introduction
+
+We all know someone close to us who has been affected by cancer in their lifetime. And in recent times, the cancer statistics that we come across have been extremely alarming. For instance, according to the National Cancer Institute, over 40% of Americans will be diagnosed with cancer during their lifetimes (USAFacts). Recognizing the significance that this condition will impose on the health and well being for the coming generations, we decided to gain a deeper understanding of it. Using Emory’s Library resources we decided to leverage two datasets about Cancer Incidence and Mortality that were originally published in the US Cancer Statistics Database.
+
+The datasets primarily consist of cancer statistics across different states in the US from the year 1999 to 2021. These datasets were specifically of interest to us because they allowed us to identify similarities and differences between US states’ cancer incidence and prevalence. These datasets also enabled us to identify any possible trends in incidence and mortality of cancer over the years, and whether certain years had a higher cancer prevalence in any of the US states. We would also be interested in exploring any correlations between the mortalities and incidences across all states and years. Ultimately, our aim is to uncover any trends and correlations between cancer rates and related factors such as sex and cancer type to grow our understanding of where cancer research efforts and funding should be focused in the coming years. For instance, if a specific cancer type is found to have a strong correlation with cancer-related mortalities, research on the potential causation between these variables should be conducted which can then be furthered by finding potential solutions to limit exposure to carcinogens for the specific cancer type.
+
+
+
+## Sourcing Data from Emory's Library Databases
+
+As mentioned above, the two combined datasets from the US Cancer Statistics Database allowed us to create a massive dataset with the following columns - State, Cancer Type, Sex, Year, Incidence Count and Mortality Count. We soon realized that it would not be possible to directly compare the incidence counts and mortality counts across all the states. Since each state has a very different population count, bigger states like California and Texas would be overrepresented in our analysis. To control for the differences in population, we wanted to calculate and analyze incidence and mortality rates as a percentage of the states’ total population. In order to do this, we had to manually integrate 52 datasets using the excel files from the US Census Bureau that included population statistics based on sex for the years 2000 to 2010 (US Census Bureau). This manual integration was completed by extracting the values from each of the sheets and placing them into a new excel sheet titled “masterpopulationbystatesbysex.csv”. This process was true for every year except 1999 which did not have population data that was split based on sex, which is why it was excluded. For the years 2011-19 and 2020-21, there were datasets that included all the necessary data for each of the states in a single dataset, respectively, which was directly imported (US Census Bureau). The final step was to merge all the different dataframes into one, giving us a master dataset that included the following columns - State, Year, Incidence, Mortality and Population.
+
+After downloading and creating the files explained above, we loaded in the data as well the necessary packages to begin manipulating the data into a format that will reflect our exploratory analysis. The only package that we will be using for this analysis is `tidyverse`.
+
+
+```{r}
+#First we must load in the necessary packages
+library("tidyverse")
+
+
+
+#Next we must read in the data: both the cancer incidence and mortality, and then the state populations
+Incidence <- read_csv("../data/CancerIncidencebySexfromtheU.S.CancerStatisticsDatabase.csv")
+
+Mortality <- read_csv("../data/CancerMortalitybySexfromtheU.S.CancerStatisticsDatabase.csv")
+
+populationdata19992010<-read_csv("../data/masterpopulationbystatesbysex.csv")
+
+populationdata20112019<-read_csv("../data/sc-est2019-agesex-civ.csv")
+
+populationdata20202023<-read_csv("../data/sc-est2023-agesex-civ.csv")
+
+```
+
+
+## Distinguishing Variables and Their Types Within the Data
+
+After the data has been read into a tabular format, we can begin to dissect the architecture of each table. By breaking down the aspects of variable names and variable types, we will gain a further understanding on how to merge the datasets together and how they are related to each other in order to get a more cohesive exploration. 
+
+
+```{r}
+#We must check the summary of each of the datasets and parse through the types of variables  
+summary(Incidence)
+
+summary(Mortality)
+
+summary(populationdata19992010)
+
+summary(populationdata20112019)
+
+summary(populationdata20202023)
+
+```
+
+Summary of Data Structures:
+
+Incidence - This dataset provides the cancer incidence counts for specified populations. Each variable represents a specific population based on the type of cancer, the year, the sex, and incidence. Each observation in the dataset then signifies the count of incidences for that specified population.
+
+Mortality - Similarly, this dataset provides the cancer mortality counts for specified populations. Just like the Incidence dataset, each variable represents a specific population based on the type of cancer, the year, the sex, and mortality. Each observation in the dataset signifies the count of mortalities for that specified population.
+
+populationdata19992010 - The variables of interest that are present in this dataset are Male Popultion, Female population, Year and State. Both the Population variables of interest each denote the male and female population respectively for each state in a given year.  
+
+populationdata20112019 - The variables of interest in this dataset are Name which denotes the name of the state, Sex which denotes the sex of the population, and POPEST{year}_CIV where year =[2011,2019] which denotes the year for that population.
+
+populationdata20202023 - Similar to the populationdata20112019 dataset the variables of interest are the NAME, SEX and POPEST{year}_CIV where year =[2020,2023], which all share the same description as the variables found in the populationdata20112019.
+
+Merging Importance: We must know and keep into account the formatting of the columns and the variable values themselves in order to ensure a seamless merging process. 
+
+Important Note on Population Data from US Census: For all of the population data obtained from the US Census Bureau, we use their estimated population counts which the Bureau derived using a formula that takes into account a population base, migration trends, and past growth trends for a given state.  
+
+
+
+## Restructuring the Data to Broaden the Scope of the Exploratory Analysis
+
+We must change the current data structures of the tables, in order for them to be merged and analyzed together. This will provide a more fruitful exploratory analysis as opposed to just parsing the summary statics of few variable from differing datasets that have no correlation to each other. 
+
+### Incidence and Mortality tables
+
+Given the current data structure of the Incidence and Mortality tables, we will not be able to perform any meaningful analysis as the variables are in a format that doesn't separate the cancer type, the year, the sex, or incidence/mortality. Therefore to get more detailed variables, we must break it down into separate variables like CancerType, Sex, MortalityCount/IncidenceCount, and Year using the pivot longer.
+
+Another note is that some of the cancer types, like urinary cancer, have a comma in their name, which would cause problems in the presented method of separation. Therefore, the comma was removed.
+
+
+```{r}
+#Now we must convert our datasets into a long format rather than a wide format before performing any data analysis and also change the name of the urinary cancer to make the data easier to handle.
+
+IncidenceLong <- Incidence %>% 
+  pivot_longer(., cols = -State,names_to = "CancerTypeIncidenceSexYear", values_to = "IncidenceCount") %>% 
+  mutate(CancerTypeIncidenceSexYear= sub("^Urinary Bladder, invasive and in situ,","Urinary Bladder invasive and in situ,", CancerTypeIncidenceSexYear)) %>% 
+  separate(CancerTypeIncidenceSexYear, into = c("CancerType", "Incidence","Sex","Year"),sep=",")
+
+MortalityLong <- Mortality %>% 
+  pivot_longer(., cols = -State,names_to = "CancerTypeMortalitySexYear", values_to = "MortalityCount") %>% 
+  mutate(CancerTypeMortalitySexYear= sub("^Urinary Bladder, invasive and in situ,","Urinary Bladder invasive and in situ,", CancerTypeMortalitySexYear)) %>% 
+  separate(CancerTypeMortalitySexYear, into = c("CancerType", "Mortality","Sex","Year"),sep=",")
+
+
+
+#Check that both of the datasets have a single variable per column and there should only be 6 columns now ("State","CancerType", "Mortality/Incidence","Sex","Year","Count")
+
+head(IncidenceLong)
+
+head(MortalityLong)
+
+
+#Since there is a variable in each of the datasets that is just Incidence and Mortality repeating we can remove those columns
+
+IncidenceLong<-IncidenceLong[,-3]
+
+MortalityLong<-MortalityLong[,-3]
+
+
+#Check the datasets again to see that all the changes made are correct
+
+head(IncidenceLong)
+
+head(MortalityLong)
+
+```
+
+After checking the successful creation of the variables we can now have a description for each one of the new variables. We do have two datasets at the moment but the only difference between them is that one looks at incidence counts and the other looks at mortality counts, the rest of the variables are the same 
+
+State - This will provide the state for a given count.
+
+CancerType - This will provide the type of the cancer for a given count.
+
+Sex - This is will provide the sex for a given count.
+
+Year - This will provide the year for a given count.
+
+IncidenceCount - This will provide the number of incidences in a given year, for a given sex, in a given state, and for a give cancer type. 
+
+MortalityCount - This will provide the number of mortalities in a given year, for a given sex, in a given state, and for a give cancer type. 
+
+
+Since we will be making comparisons between mortality and incidence across other variables, we will join the two datasets into one. After the merge is complete between incidence and mortality, we will broaden our scope by collapsing the table to get the sum of incidences and mortalities for a given state, sex and year grouping. Essentially this new table will be irrespective of CancerType, a variable that could potentially be examined later in a confirmatory analysis.
+
+
+```{r}
+#Given that we want to compare the incidence of cancer with the mortality of cancer, we will merge the two datasets into one
+
+IncidenceandMortalityData<-left_join(IncidenceLong,MortalityLong,by=c("State","CancerType","Sex","Year"))
+
+
+#Check to make sure the data structure is the same and that only the MortalityCount variable has been merged to the IncidenceLong dataset
+
+head(IncidenceandMortalityData)
+
+
+#In order to collapse the data to get a resulting table that is irrespective of cancer type we must first group by the unique state, sex and year combinations (for example: Alabama Male 1999), and then sum the counts of incidences and mortalities across cancer types for each of the unique groupings
+
+IncidenceandMortalitybySexStateYear<-IncidenceandMortalityData%>%
+  select(-CancerType)%>%
+  group_by(State,Sex,Year)%>%
+  summarise(Incidence = sum(IncidenceCount,na.rm = TRUE),
+            Mortality = sum(MortalityCount,na.rm = TRUE),.groups = "drop")
+
+#Making the variable types consistent across datasets
+
+IncidenceandMortalitybySexStateYear$Year<-as.factor(IncidenceandMortalitybySexStateYear$Year)
+
+#Ensure there are no extra spaces so that the values will match when merging 
+
+IncidenceandMortalitybySexStateYear$State <- trimws(IncidenceandMortalitybySexStateYear$State)
+
+IncidenceandMortalitybySexStateYear$Sex <- trimws(IncidenceandMortalitybySexStateYear$Sex)
+
+IncidenceandMortalitybySexStateYear$Year <- trimws(IncidenceandMortalitybySexStateYear$Year)
+
+#Check to ensure the variables were correctly collapsed and that there is no longer a CancerType variable
+
+head(IncidenceandMortalitybySexStateYear)
+
+```
+
+
+As we see in the summary of the newly created IncidenceandMortalitybySexStateYear table, we have successfully made observations irrespective of CancerType.
+
+
+### Population tables
+
+After manipulating the data format of IncidenceandMortalitybySexStateYear we now have to clean and format the population data into a table that is suitable for merging into the IncidenceandMortalitybySexStateYear table.
+
+
+```{r}
+#We will not work with the Total Population column from the population dataset from 1999 - 2010 since we are interested in merging the population data into the IncidenceandMortalitybySexStateYear dataset
+
+populationbysextable19992010 <- populationdata19992010%>%
+  select(-'Total Population')
+
+#We want to set the column names for the dataset to match values found in the IncidenceandMortalitybySexStateYear dataset
+
+colnames(populationbysextable19992010)<-c("State","Year","Male","Female")
+
+#Now we must convert our datasets into a long format rather than a wide format to properly continue with data analysis and name the variable stored in the column as "Sex"
+
+populationbysextable19992010<-populationbysextable19992010%>%
+  pivot_longer(!c(State,Year),names_to = "Sex", values_to = "Population")
+
+
+#We want to convert Year column into a factor in order to make variable types consistent across datasets
+
+populationbysextable19992010$Year<-as.factor(populationbysextable19992010$Year)
+
+
+#For the 2011-2019 and 2020-2023 population by sex tables, we want to select certain columns that will be of interest and filter for age = 999 to get the total count of the population irrespective of Age and Sex not equal to 0 to get the Male and Female populations, and recode the sex variable which was initially numerical into a factor where 1 = Male and 2 = Female
+
+#For 2020-2023 data we filter out the years that were not in out cancer data table, therefor we only retained the populations from 2020 to 2021 for that particular dataset
+
+populationbysextable20112019 <- populationdata20112019%>%
+  select(-c(SUMLEV,REGION,DIVISION,STATE,AGE,ESTBASE2010_CIV,POPEST2010_CIV))%>%
+  filter(populationdata20112019$AGE==999,populationdata20202023$SEX != 0)%>%
+  mutate(SEX=recode(SEX,`1`="Male",`2`="Female"))
+
+populationbysextable20202021 <- populationdata20202023%>%
+  select(-c(SUMLEV,REGION,DIVISION,STATE,AGE,ESTBASE2020_CIV,POPEST2022_CIV,POPEST2023_CIV))%>%
+  filter(populationdata20202023$AGE==999,populationdata20202023$SEX != 0)%>%
+  mutate(SEX=recode(SEX,`1`="Male",`2`="Female"))
+
+
+#Renaming the columns to match values found in the IncidenceandMortalitybySexStateYear dataset
+
+colnames(populationbysextable20112019)<-c("State","Sex","2011","2012","2013","2014","2015","2016","2017","2018","2019")
+
+colnames(populationbysextable20202021)<-c("State","Sex","2020","2021")
+
+
+#We must convert our datasets into a long format rather than a wide format by taking the column names and putting them into a Year variable and then the values (Population Counts)
+
+populationbysextable20112019<-populationbysextable20112019%>%
+  pivot_longer(!c(State,Sex),names_to = "Year", values_to = "Population")
+
+populationbysextable20202021<-populationbysextable20202021%>%
+  pivot_longer(!c(State,Sex),names_to = "Year", values_to = "Population")
+
+
+#Validate if the formatting of the tables has been done corectly by checking to see if the column names match from each populationbysextable to the column names found in the IncidenceandMortalitybySexStateYear data
+
+head(populationbysextable19992010)
+
+head(populationbysextable20112019)
+
+head(populationbysextable20202021)
+```
+
+Once there has been successful filtering of the variables and pivoting we can now describe the variables. By being considerate of the end goal of merging the datasets, we made all the variables the same in name and type across the three tables.  
+
+State - This will provide the state for an observation.
+
+Sex - This is will provide the sex for an observation.
+
+Year - This will provide the year for an observation.
+
+Population - This will provide the number of people in a given year, for a given sex, in a given state. 
+
+Since there will be a merging of these three tables to the IncidenceandMortalitybySexStateYear table, we will first bind the population tables together. 
+
+
+```{r}
+
+#We binded the years of population by sex table for 1999-2010 and 2011-2019
+
+Merged19992019<-rbind(populationbysextable19992010,populationbysextable20112019)
+
+
+#We also created a dataset called mergedpopulation created by merging the previously merged 1999-2019 dataset and population by sex table 2020-21
+
+Mergedpopulation<-rbind(Merged19992019,populationbysextable20202021)
+
+
+#Within the mergedpopulation dataframe, we recoded the state variable for teh District of Columbia (for analysis purposes)
+
+Mergedpopulation%>%
+  mutate(State=recode(State,"District of Columbia"="Washington DC"))
+
+
+#Ensure there are no extra spaces so that the values will match when merging
+
+Mergedpopulation$State <- trimws(Mergedpopulation$State)
+
+Mergedpopulation$Sex <- trimws(Mergedpopulation$Sex)
+
+Mergedpopulation$Year <- trimws(Mergedpopulation$Year)
+
+
+#Check to ensure that all the population datasets were binded together, there should be data for each year from 1999 to 2021
+
+view(Mergedpopulation)
+
+```
+
+
+
+### Data Merging
+
+Using the fully cleaned and formatted tables, we will merge the data based on the State, Sex, and Year values. The output of this merge will be a table similar to IncidenceandMortalitybySexStateYear but with a Population column added to it. While this output would be great to use to analyze differences in incidence and mortality between sexes. However, to get a general understanding of incidence and mortality based on state and year, we decided to integrate the male and female statistics to form our table for the analysis. In this process, we also saved csv files of our new data frame and our data frame that was split by sex to save all of our data pre-processing steps. Another reason for saving the data at this point, is that we anticipate delving into deeper analyses as our exploration advances into developing research driven questions.
+
+```{r}
+#We merged Incidence Mortality and Merged population by common variables (State, Sex, and Year)
+
+MergedDatawithPopulationBySex<-left_join(IncidenceandMortalitybySexStateYear,Mergedpopulation,by=c("State","Sex","Year"))
+
+#From the mergeddatawithpopulationbysex, we grouped by State and year and we used the sum() function to sum all the values present individually for Incidence, mortality, and population. We also used .groups = "drop" to ungroup the result. 
+
+overallMergedDatawithPopulation<-MergedDatawithPopulationBySex%>%
+  group_by(State,Year)%>%
+  summarise(Incidence = sum(Incidence,na.rm = TRUE),
+            Mortality = sum(Mortality,na.rm = TRUE),
+            Population = sum(Population,na.rm = TRUE), .groups = "drop")
+
+
+#We created csv's for the following dataframes:
+
+write.table(MergedDatawithPopulationBySex,"EDAmasterbysexDATA.csv",sep=",",quote=F,row.names=T)
+
+write.table(overallMergedDatawithPopulation,"EDAmasteroverallDATA.csv",sep=",",quote=F,row.names=T)
+   
+
+```
+
+This time the output table is irrespective of Sex. Therefore, the overallMergedDatawithPopulation table will provide insights solely on differences between states and between years for cancer incidence and mortality.
+
+
+### Variable Creation
+
+After merging and collapsing the data to get the overallMergedDatawithPopulation table, we created two new columns for incidence rate (total incidents in a given state / population in a given state) and mortality rate (total mortalities in a given state / population in a given state) to control for population sizes across states in the dataset. 
+
+
+```{r}
+#From the overallMergedDatawithPopulation, we created new variables that showed the incidence rate and mortality rate. We also filtered for the population not equal to 0.
+
+OverallData<-overallMergedDatawithPopulation %>%
+  mutate(IncidenceRate = Incidence/Population,
+         MortalityRate = Mortality/Population) %>%
+  filter(overallMergedDatawithPopulation$Population != 0)
+
+#To summarize the OverallData dataframe:
+
+summary(OverallData)
+  
+```
+
+
+
+
+
+### Data Summary Tables
+
+After checking that our variable creation was successful, we can begin to summarize our variables of interest in our data.
+
+```{r}
+#For the beginning steps of the data analysis process we will summarize the mean and standard deviation of both the MortalityRate and IncidenceRate variable by state, and by year 
+
+SummarybyStatetable <- OverallData %>% 
+  group_by(State) %>% 
+  summarise(MeanIncidenceRate=mean(IncidenceRate,na.rm = TRUE),
+            MeanMortalityRate=mean(MortalityRate,na.rm = TRUE),
+            StandardDeviationIncidenceRate=sd(IncidenceRate,na.rm = TRUE),
+            StandardDeviationMortalityRate=sd(MortalityRate,na.rm = TRUE))
+
+SummarybyYeartable <- OverallData %>% 
+  group_by(Year) %>% 
+  summarise(MeanIncidenceRate=mean(IncidenceRate,na.rm = TRUE),
+            MeanMortality=mean(MortalityRate,na.rm = TRUE),
+            StandardDeviationIncidenceRate=sd(IncidenceRate,na.rm = TRUE),
+            StandardDeviationMortalityRate=sd(MortalityRate,na.rm = TRUE))
+
+
+#View and analyze the summary tables
+
+view(SummarybyStatetable)
+
+view(SummarybyYeartable)
+
+```
+
+After formatting and analyzing the summary table’s that reported the mean and standard deviation of the incidence and mortality rates, we uncovered that Utah was the state with the lowest incident rate at 0.003061225. In addition, we saw that Maine was the state with the highest incident rate at 0.005874022. We can interpret this information as the following: 3 out of every 1000 people in Utah will get diagnosed with cancer each year on average , and almost 6 out of every 1000 people in Maine will get diagnosed with cancer each year on average. In terms of mortality rate, we discovered that Utah was the state with the lowest mortality rate at 0.0008426508 and West Virginia was the state with the highest mortality rate at 0.002209005. Our interpretation of these results are as follows: 8 people out of every 10,000 people in Utah will die because of cancer in a year on average, and 22 people out of every 10,000 people in West Virginia will die out of cancer in a year on average. 
+
+## Data Visualizations
+
+After seeing the table of the summary statistics, we would like to visualize some of the relationships and distributions.
+
+### Distribution
+
+We wanted to get a better understanding of the distribution and decided to visualize the data using histograms. We first took the data and grouped it by the individual states and took the average 
+
+```{r,warning=FALSE}
+#Given our summary statistics we will make plots to visualize our distribution of the Mean Incidence Rate per State 
+OverallData %>%
+  group_by(State) %>% 
+  summarise(MeanIncidenceRate=mean(IncidenceRate,na.rm = TRUE)) %>%
+ggplot(., aes(x=MeanIncidenceRate))+
+  geom_histogram(bins = 10,fill="#5D100A",color="black")+
+  theme_bw(base_size=12,base_family='Arial')  +
+  theme(axis.text.y =  element_text(size = 6, family = "Arial")) +
+  theme(axis.text.x =  element_text(size = 6, family = "Arial")) +
+  labs(x="Average Incidence Rate per State", y="Count", title="Histogram of Average Incidence Rate per State")
+
+ggsave("histIncidenceRate.png", units="in", width=5, height=4)
+```
+
+The histogram is right skewed, with the mode around 0.0047. This means that 16 states share an incidence around this value. The states that are on the far right-side (> .00525) of the histogram are particularly interesting and warrant closer examination to understand if they share any similarities that could be responsible for such a high rate. At the same time, states on the far left-side end of the distribution also warrant closer examination as there may be some external factors that are associated with good or bad incidence rates.
+
+
+```{r,warning=FALSE}
+# Visualize our distribution of the Mean Mortality Rate per State
+OverallData %>%
+  group_by(State) %>% 
+  summarise(MeanMortalityRate=mean(MortalityRate,na.rm = TRUE)) %>%
+ggplot(., aes(x=MeanMortalityRate))+
+  geom_histogram(bins = 10,fill="#3C4142",color="black")+
+  theme_bw(base_size=12,base_family='Arial')  +
+  theme(axis.text.y =  element_text(size = 6, family = "Arial")) +
+  theme(axis.text.x =  element_text(size = 6, family = "Arial")) +
+  labs(x="Average Mortality Rate per State", y="Count", title="Histogram of Average Mortality Rate per State")
+
+ggsave("histMortalityRate.png", units="in", width=5, height=4)
+```
+
+The histogram seems to be more symmetrical, with the mode around 0.0016. This means that 16 states shared an average mortality rate around this value. As mentioned above, the states at extreme ends, especially this higher end (>0.002), of the distribution warrant a closer examination as there may be some common external factors that are associated with good or bad mortality rates.
+
+
+### Subsetting of High Incidence Rate and High Mortality Rate States
+
+#### Timeseries Analysis
+
+After filtering the data based on highest incidence and mortality rate, we were able to identify two states that have a mean incidence rate of  > 0.00525 and mean mortality rate of > 0.02 - Maine and West Virginia. To better understand these rates and how they have developed over the years in these states, we decided to perform a time-series analysis to understand how the rates for these two states have progressed overtime.
+
+
+```{r}
+# Given our distribution of the data we want to take a closer look at the States that have mean Incidence and Mortality Rates greater than the mode
+
+#This will identify states that match the thresholds set
+
+OverallData %>%
+  group_by(State) %>% 
+  summarise(MeanIncidenceRate=mean(IncidenceRate,na.rm = TRUE),
+            MeanMortalityRate=mean(MortalityRate,na.rm = TRUE)) %>%
+  filter(MeanIncidenceRate >= 0.00525 & MeanMortalityRate >= 0.002)
+
+#Given that Maine and West Virigina fit the criteria we first plot a graph showing how the Incidence rate has change over time for Maine.
+
+ggplot(OverallData[OverallData$State == "Maine",],aes(x=Year,y=IncidenceRate)) +
+  geom_point(col="cornflowerblue")+
+  theme_bw()+
+  labs(x="Year", y="Incidence Rate", title="Incidence Rate per Year for Maine")
+
+```
+
+The scatter graph for Maine demonstrates that since 2000, the incidence rate has gone up, however, not at a steady rate. Between the years of 2011 and 2019, the incidence rate rose and before dropping drastically during 2020. In terms of other statistics, the highest incidence rate was recorded in 2019, while the lowest rate was recorded in 2000.
+
+
+
+
+```{r}
+#Plot a graph showing how the Incidence rate has change over time for West Virginia
+
+ggplot(OverallData[OverallData$State == "West Virginia",],aes(x=Year,y=IncidenceRate)) +
+  geom_point(col="cornflowerblue")+
+  theme_bw()+
+  labs(x="Year", y="Incidence Rate", title="Incidence Rate per Year for West Virginia")
+```
+
+Similar to the scatter graph for the incidence rate for Maine, the incidence rate in West Virginia, has risen since 2000, however, without a stable trend. The highest rate was recorded in 2021, while the lowest was recorded in 2003.
+
+
+
+
+```{r}
+#Plot a graph showing how the Mortality rate has change over time for Maine
+
+ggplot(OverallData[OverallData$State == "Maine",],aes(x=Year,y=MortalityRate)) +
+  geom_point(col="red")+
+  theme_bw()+
+  labs(x="Year", y="Mortality Rate", title="Mortality Rate per Year for Maine")
+
+#Plot with fit scales
+
+ggplot(OverallData[OverallData$State == "Maine",],aes(x=Year,y=MortalityRate)) +
+  geom_point(col="red")+
+  theme_bw()+
+  lims(y=c(.0015,.0025))+
+  labs(x="Year", y="Mortality Rate", title="Mortality Rate per Year for Maine")
+
+```
+
+When initially plotted this graph gave the impression of no clear trend, however when the scales were fixed we experienced this resulting behavior in the scatter.
+The graph highlights a stable mortality rate around 0.0020 signifying no large change in growth over the years. 
+
+
+
+```{r}
+#Plot a graph showing how the Mortality rate has change over time for West Virginia 
+
+ggplot(OverallData[OverallData$State == "West Virginia",],aes(x=Year,y=MortalityRate)) +
+  geom_point(col="red")+
+  theme_bw()+
+  labs(x="Year", y="Mortality Rate", title="Mortality Rate per Year for West Virginia")
+
+#Plot with fit scales
+
+ggplot(OverallData[OverallData$State == "West Virginia",],aes(x=Year,y=MortalityRate)) +
+  geom_point(col="red")+
+  theme_bw()+
+  lims(y=c(.00175,.00275))+
+  labs(x="Year", y="Mortality Rate", title="Mortality Rate per Year for West Virginia")
+
+```
+
+Similarly to the last plot, there was no clear trend but when the scales were fixed we experienced this resulting scatter. The graph highlights a stable mortality rate around 0.00225 signifying no large change in growth over the years.
+
+
+### Correlation Between Incidence Rate and Mortality Rate
+
+Inspired by the time series analysis, we wanted to see if the incidence rates and mortality rates were correlated across the years. Therefore we plotted the two variables against each other with a line of best fit to see any resulting trend.
+
+```{r,warning=FALSE}
+#Plot a graph showing the correlation of mortality rate and incidence rate for different states and years
+
+ggplot(OverallData,aes(x=IncidenceRate,y=MortalityRate)) +
+  geom_point(col="orchid2")+
+  geom_smooth(method=lm, formula = y ~ x,se=F)+
+  theme_bw()+
+  labs(x="Incidence Rate", y="Mortality Rate", title="Mortality Rate versus Incidence Rate for a Given State and Year")
+
+
+```
+
+The scatter plot illustrates a clear positive correlation, that indicates that as the incidence rate increases, the mortality rate tends to rise as well. Most of the data points are clustered within the higher range of values, with some outliers at the lower range of the incidence rate.
+
+
+
+## Conclusion and Further Analysis
+
+As evident throughout our exploratory journey, there are a lot of interesting analytical opportunities to dive into as we proceed with this project. An interesting observation was that Utah has the lowest incidence and mortality rates across all states in the USA, and it would certainly be worth looking into what factors potentially contribute to these statistics. On the other hand, Maine and West Virginia seem to fare the worst in terms of incidence and mortality rates across the USA and we should explore any commonalities between the states that can potentially contribute to heightened incidence and mortality rates.
+
+
+## Bibliography 
+
+Bureau, U. C. (2021a, October 8). State intercensal tables: 2000-2010. Census.gov. https://www.census.gov/data/tables/time-series/demo/popest/intercensal-2000-2010-state.html
+Bureau, U. C. (2021b, October 8). State population by characteristics: 2010-2019. Census.gov. https://www.census.gov/data/tables/time-series/demo/popest/2010s-state-detail.html
+Bureau, U. C. (2024, November 25). State population by characteristics: 2020-2024. Census.gov. https://www.census.gov/data/tables/time-series/demo/popest/2020s-state-detail.html
+USAFacts. (2024, July 29). US cancer rates and trends: How have cancer rates and mortality changed over time? https://usafacts.org/articles/how-have-cancer-rates-changed-over-time/ 
+Emory Libraries Resources Terms of use. Emory Libraries Resources Terms of Use - Emory University Libraries. (n.d.). https://data-sagepub-com.proxy.library.emory.edu/dataset?view=AA8BXQAAgADcAQAAAAAAAAAA3_zMslwIJ8Ve1X%24GFkbpBG2ii7wZFl2tiSNB4wcDRmeLoNKyWPVjgshN8S8Z5mg0W2zzYLcKl_iA_E5Fr1nE1D3MK0o24_d2d9f%247%24HZHyY_rm2ROPdzfEopau_r9951dnu1QxrUK7zQ54EfKAuk8griSNqdu0ow%24awcc_sdj4dueEEh_S3WpuXwtIGDSdEWFWELMxev_iZo7B5M7xJIwVA2VebjQD9VGTdSCFKKYX3EM1NjOqz35ku_8ia6q1WWdXbXMOTU 
+Emory Libraries Resources Terms of use. Emory Libraries Resources Terms of Use - Emory University Libraries. (n.d.-a). https://data-sagepub-com.proxy.library.emory.edu/dataset?view=AA8BXQAAgADcAQAAAAAAAAAA3_zMslwIJ8Ve1X%24GFkbpBG2ii7wZFl2tiSNB53m3ZXMlw7uqekbp__CdpXcXPke58f2QDpezb1Y9EnkU6X4rM4FMdb0hw0CtCXBthd0DispXtw4usljYdpD5JKa1pfSeepLlxmv8TGyevGuQl0D%24UrSqfMdEW4TJDhRaWo18gyLM_lN4mkIpA_T10vrTfPucxbZPctEiEpGfGgKZ5a9NDEH1FY1ffEbfPbgbOaKvBqSjioWiIrJRpc2vmNM1AHzSalnhmyg 
+
+
+
+
